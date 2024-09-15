@@ -1,0 +1,261 @@
+Table: Failed
+
++--------------+---------+
+| Column Name  | Type    |
++--------------+---------+
+| fail_date    | date    |
++--------------+---------+
+fail_date is the primary key (column with unique values) for this table.
+This table contains the days of failed tasks.
+ 
+
+Table: Succeeded
+
++--------------+---------+
+| Column Name  | Type    |
++--------------+---------+
+| success_date | date    |
++--------------+---------+
+success_date is the primary key (column with unique values) for this table.
+This table contains the days of succeeded tasks.
+ 
+
+A system is running one task every day. Every task is independent of the previous tasks. The tasks can fail or succeed.
+
+Write a solution to report the period_state for each continuous interval of days in the period from 2019-01-01 to 2019-12-31.
+
+period_state is 'failed' if tasks in this interval failed or 'succeeded' if tasks in this interval succeeded. Interval of days are retrieved as start_date and end_date.
+
+Return the result table ordered by start_date.
+
+The result format is in the following example.
+
+
+Example 1:
+
+Input: 
+Failed table:
++-------------------+
+| fail_date         |
++-------------------+
+| 2018-12-28        |
+| 2018-12-29        |
+| 2019-01-04        |
+| 2019-01-05        |
++-------------------+
+Succeeded table:
++-------------------+
+| success_date      |
++-------------------+
+| 2018-12-30        |
+| 2018-12-31        |
+| 2019-01-01        |
+| 2019-01-02        |
+| 2019-01-03        |
+| 2019-01-06        |
++-------------------+
+Output: 
++--------------+--------------+--------------+
+| period_state | start_date   | end_date     |
++--------------+--------------+--------------+
+| succeeded    | 2019-01-01   | 2019-01-03   |
+| failed       | 2019-01-04   | 2019-01-05   |
+| succeeded    | 2019-01-06   | 2019-01-06   |
++--------------+--------------+--------------+
+Explanation: 
+The report ignored the system state in 2018 as we care about the system in the period 2019-01-01 to 2019-12-31.
+From 2019-01-01 to 2019-01-03 all tasks succeeded and the system state was "succeeded".
+From 2019-01-04 to 2019-01-05 all tasks failed and the system state was "failed".
+From 2019-01-06 to 2019-01-06 all tasks succeeded and the system state was "succeeded".
+
+SELECT stats AS period_state, 
+    MIN(day) AS start_date, 
+    MAX(day) AS end_date
+FROM (
+    SELECT 
+        day, 
+        RANK() OVER (ORDER BY day) AS overall_ranking, 
+        stats, 
+        rk, 
+        (RANK() OVER (ORDER BY day) - rk) AS inv
+    FROM (
+        SELECT fail_date AS day, 'failed' AS stats, 
+            RANK() OVER (ORDER BY fail_date) AS rk
+        FROM Failed
+        WHERE fail_date BETWEEN '2019-01-01' AND '2019-12-31'
+        UNION 
+        SELECT success_date AS day, 
+            'succeeded' AS stats, 
+            RANK() OVER (ORDER BY success_date) AS rk
+        FROM Succeeded
+        WHERE success_date BETWEEN '2019-01-01' AND '2019-12-31') t
+    ) c
+GROUP BY inv, stats
+ORDER BY start_date
+
+
+WITH RankedFailed AS (
+    SELECT 
+        fail_date AS day, 
+        'failed' AS stats, 
+        RANK() OVER (ORDER BY fail_date) AS rk
+    FROM 
+        Failed
+    WHERE 
+        fail_date BETWEEN '2019-01-01' AND '2019-12-31'
+),
+RankedSucceeded AS (
+    SELECT 
+        success_date AS day, 
+        'succeeded' AS stats, 
+        RANK() OVER (ORDER BY success_date) AS rk
+    FROM 
+        Succeeded
+    WHERE 
+        success_date BETWEEN '2019-01-01' AND '2019-12-31'
+),
+Combined AS (
+    SELECT  
+        day, 
+        stats, 
+        RANK() OVER (ORDER BY day) AS overall_ranking, 
+        rk
+    FROM 
+        RankedFailed
+    UNION ALL
+    SELECT 
+        day, 
+        stats, 
+        RANK() OVER (ORDER BY day) AS overall_ranking, 
+        rk
+    FROM 
+        RankedSucceeded
+),
+WithInv AS (
+    SELECT 
+        day, 
+        stats, 
+        overall_ranking, 
+        rk, 
+        (overall_ranking - rk) AS inv
+    FROM 
+        Combined
+)
+SELECT 
+    stats AS period_state, 
+    MIN(day) AS start_date, 
+    MAX(day) AS end_date
+FROM 
+    WithInv
+GROUP BY 
+    inv, stats
+ORDER BY 
+    start_date;
+
+
+
+Explanation:
+
+1.	RankedFailed CTE:
+•	This CTE selects fail_date from the Failed table and ranks the dates.
+•	It includes only the dates between '2019-01-01' and '2019-12-31'.
+
+2.	RankedSucceeded CTE:
+•	This CTE selects success_date from the Succeeded table and ranks the dates.
+•	It includes only the dates between '2019-01-01' and '2019-12-31'.
+
+3.	Combined CTE:
+•	This CTE combines the results of the RankedFailed and RankedSucceeded CTEs.
+•	It calculates the overall ranking of the combined dates.
+
+4.	WithInv CTE:
+•	This CTE calculates the inv value, which is the difference between overall_ranking and rk.
+
+5.	Final SELECT:
+•	The final SELECT query groups by inv and stats to find contiguous periods and reports the start and end dates of each period.
+•	It orders the results by start_date.
+
+
+`WithInv` CTE is a crucial part of the query that helps in identifying contiguous sequences of dates. 
+
+### Understanding the Components
+
+1. **Overall Ranking**: This rank is assigned to each date (regardless of whether it is a success or failure) based on its chronological order.
+   - It creates a continuous sequence of integers representing the order of the dates.
+
+2. **Rank within Group (rk)**: This rank is assigned within each group of dates (separately for `failed` and `succeeded`).
+   - It represents the order of dates within each subset (all failed dates or all succeeded dates).
+
+### The `inv` Value Calculation
+
+The `inv` value is calculated as the difference between the `overall_ranking` and `rk` for each date. 
+
+### Purpose of the `inv` Value
+
+The `inv` value helps to identify contiguous sequences by creating a common identifier for dates that are part of the same sequence. Here's how it works:
+
+1. **Contiguous Dates**: For a series of contiguous dates within the same category (`failed` or `succeeded`), the difference between the `overall_ranking` and `rk` remains constant.
+   - This is because both `overall_ranking` and `rk` increase by 1 for each subsequent date in the sequence.
+
+2. **Non-Contiguous Dates**: When there is a break in the sequence (a gap in dates or a change from `failed` to `succeeded` or vice versa), the `overall_ranking` continues to increase, but the `rk` restarts or continues in its own subset, changing the difference (`inv` value).
+
+### Detailed Example
+
+Let's go through a simplified example to illustrate this:
+
+#### Data Sample
+
+Consider the following dates:
+
+- **Failed Dates**: `2019-01-01`, `2019-01-02`, `2019-01-04`
+- **Succeeded Dates**: `2019-01-03`, `2019-01-05`
+
+#### Overall Ranking
+
+| Day         | Stats     | Overall Ranking |
+|-------------|-----------|-----------------|
+| 2019-01-01  | failed    | 1               |
+| 2019-01-02  | failed    | 2               |
+| 2019-01-03  | succeeded | 3               |
+| 2019-01-04  | failed    | 4               |
+| 2019-01-05  | succeeded | 5               |
+
+#### Rank within Group (rk)
+
+| Day         | Stats     | Overall Ranking | rk  |
+|-------------|-----------|-----------------|-----|
+| 2019-01-01  | failed    | 1               | 1   |
+| 2019-01-02  | failed    | 2               | 2   |
+| 2019-01-03  | succeeded | 3               | 1   |
+| 2019-01-04  | failed    | 4               | 3   |
+| 2019-01-05  | succeeded | 5               | 2   |
+
+#### inv Calculation
+
+| Day         | Stats     | Overall Ranking | rk  | inv  |
+|-------------|-----------|-----------------|-----|------|
+| 2019-01-01  | failed    | 1               | 1   | 0    |
+| 2019-01-02  | failed    | 2               | 2   | 0    |
+| 2019-01-03  | succeeded | 3               | 1   | 2    |
+| 2019-01-04  | failed    | 4               | 3   | 1    |
+| 2019-01-05  | succeeded | 5               | 2   | 3    |
+
+#### Analysis of `inv` Value
+
+- For `2019-01-01` and `2019-01-02` (both `failed`), `inv` is `0`, indicating they are part of the same contiguous block.
+- For `2019-01-03` (`succeeded`), `inv` is `2`, starting a new block.
+- For `2019-01-04` (`failed`), `inv` is `1`, indicating a new block of failures.
+- For `2019-01-05` (`succeeded`), `inv` is `3`, indicating a new block of successes.
+
+### Final Grouping
+
+Using the `inv` value to group dates, we can easily identify contiguous intervals:
+
+- Group by `inv = 0`: `2019-01-01` to `2019-01-02` (`failed`)
+- Group by `inv = 2`: `2019-01-03` (`succeeded`)
+- Group by `inv = 1`: `2019-01-04` (`failed`)
+- Group by `inv = 3`: `2019-01-05` (`succeeded`)
+
+### Conclusion
+
+The `inv` value acts as a unique identifier for each contiguous block of dates. By grouping on this `inv` value, we can efficiently identify and report periods where tasks either consistently failed or succeeded, allowing us to extract the desired start and end dates for each period.
