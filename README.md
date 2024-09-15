@@ -1,7 +1,6 @@
 # SQL
 
 ```
-```
 ├─ README.md
 └─ leetcode
    ├─ .DS_Store
