@@ -1,0 +1,107 @@
+Table: Products
+
++-------------+------+
+| Column Name | Type |
++-------------+------+
+| product_id  | int  |
+| price       | int  |
++-------------+------+
+product_id contains unique values.
+Each row in this table shows the ID of a product and the price of one unit.
+ 
+
+Table: Purchases
+
++-------------+------+
+| Column Name | Type |
++-------------+------+
+| invoice_id  | int  |
+| product_id  | int  |
+| quantity    | int  |
++-------------+------+
+(invoice_id, product_id) is the primary key (combination of columns with unique values) for this table.
+Each row in this table shows the quantity ordered from one product in an invoice. 
+ 
+
+Write a solution to show the details of the invoice with the highest price.
+
+If two or more invoices have the same price, return the details of the one with the smallest invoice_id.
+
+Return the result table in any order.
+
+The result format is shown in the following example.
+
+ 
+
+Example 1:
+
+Input: 
+Products table:
++------------+-------+
+| product_id | price |
++------------+-------+
+| 1          | 100   |
+| 2          | 200   |
++------------+-------+
+Purchases table:
++------------+------------+----------+
+| invoice_id | product_id | quantity |
++------------+------------+----------+
+| 1          | 1          | 2        |
+| 3          | 2          | 1        |
+| 2          | 2          | 3        |
+| 2          | 1          | 4        |
+| 4          | 1          | 10       |
++------------+------------+----------+
+Output: 
++------------+----------+-------+
+| product_id | quantity | price |
++------------+----------+-------+
+| 2          | 3        | 600   |
+| 1          | 4        | 400   |
++------------+----------+-------+
+Explanation: 
+Invoice 1: price = (2 * 100) = $200
+Invoice 2: price = (4 * 100) + (3 * 200) = $1000
+Invoice 3: price = (1 * 200) = $200
+Invoice 4: price = (10 * 100) = $1000
+
+The highest price is $1000, and the invoices with the highest prices are 2 and 4. 
+We return the details of the one with the smallest ID, which is invoice 2.
+
+# Write your MySQL query statement below
+
+with cte as (
+    SELECT invoice_id, 
+        SUM(quantity*price) AS 'price2'
+    FROM Purchases a 
+    LEFT JOIN Products 
+        ON a.product_id = Products.product_id
+    GROUP BY invoice_id
+    ORDER BY product_id DESC, invoice_id ASC
+    LIMIT 1
+)
+SELECT a.product_id, 
+    quantity, 
+    quantity*b.price AS 'price'
+FROM Purchases a 
+LEFT JOIN Products b 
+    ON a.product_id = b.product_id
+WHERE invoice_id = (
+    SELECT invoice_id 
+    FROM cte
+)
+
+Explanation
+
+1.	Calculate the Total Price for Each Invoice:
+•	Use a Common Table Expression (CTE) to join the Purchases table with the Products table and 
+    calculate the total price for each invoice by multiplying the product price by the quantity ordered.
+
+2.	Identify the Invoice with the Highest Price:
+•	Find the invoice with the maximum total price. If there are multiple invoices with the same price, 
+    select the one with the smallest invoice_id.
+
+3.	Retrieve the Details of the Invoice:
+•	Join the Purchases table with the Products table again to get the detailed information 
+    (product_id, quantity, and calculated price) for the identified invoice.
