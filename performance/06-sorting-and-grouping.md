@@ -1,4 +1,4 @@
-## Chapter 6: Sorting and Grouping (Expanded)
+## Chapter 6: Sorting and Grouping
 
 ### Overview
 This chapter delves into sorting and grouping operations in SQL, which are crucial for organizing and summarizing data in a database. Sorting helps arrange data in a specific order, while grouping consolidates data into subsets for analysis. Both operations can significantly affect query performance, especially with large datasets. Understanding how SQL databases perform sorting and grouping operations, along with how to optimize these processes, is essential for database performance tuning.
@@ -182,5 +182,3 @@ This chapter explores the technical aspects of sorting and grouping, how they ar
 - Sorting and grouping are critical operations in SQL, frequently used in data reporting and analysis.
 - While these operations can be resource-intensive, understanding how the database engine processes them and applying optimization techniques like indexing can significantly improve performance.
 - Regularly monitoring query execution plans and applying best practices in indexing and query rewriting ensures efficient SQL performance, especially with large datasets.
-
-These notes provide a comprehensive understanding of sorting and grouping, along with practical techniques to enhance the performance of SQL queries involving these operations. For more in-depth explanations and examples, refer to "SQL Performance Explained" by Markus Winand.
